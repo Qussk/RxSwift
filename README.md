@@ -44,7 +44,16 @@ RxSwift에 대한 학습
 
 ## 일반적인비동기방식
 
+
+
 일반적인 DispatchQueue의 방식
+<div>
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/syncg.gif?raw=true" width="200px">
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/asyncg.gif?raw=true" width="200px">
+</div>
+
+> 왼쪽 : 동기 ,  오른쪽:  비동기
+
 
 *Code*
 
@@ -110,6 +119,17 @@ class AsyncViewController: UIViewController {
  
 
 ## Step1
+
+<div>
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/rxg1.gif?raw=true" width="200px">
+</div>
+
+Rx의 방식 
+: 비동기시 작업을 취소를 해야할때, 오퍼레이션 큐나 처리내내 확인하는 플러그 없이, 간단하게 작업 불러오는 걸 취소할 수 있다.
+
+===> dispose()나, DisposeBag()을 새로 만드는 방식으로 
+
+
 
 ### **Observable사용**
 - 처음시작할 때 `observeOn`을 해줘야한다.
