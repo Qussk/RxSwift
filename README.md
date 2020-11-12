@@ -9,7 +9,7 @@ RxSwift에 대한 학습
 
 - [RxSwift와 Combine 차이](https://qussk.github.io/2020/11/11/RxSwift%EC%99%80-Combin%EC%9D%98-%EC%B0%A8%EC%9D%B4)
 - 유사 라이브러리 
-  - PromiseKit
+  - [PromiseKit](#)
 
 
 
@@ -33,6 +33,9 @@ RxSwift에 대한 학습
 
 
 
+
+
+
 ## RxSwiftIn4Hours
 ![](https://github.com/iamchiwon/RxSwift_In_4_Hours/raw/master/docs/rxswift_in_4_hours_logo.png)
 >  RxSwift 4시간에 끝내기 
@@ -44,12 +47,10 @@ RxSwift에 대한 학습
 
 ## 일반적인비동기방식
 
-
-
 일반적인 DispatchQueue의 방식
 <div>
-<img src = "https://github.com/Qussk/RxSwift/blob/main/image/syncg.gif?raw=true" width="200px">
-<img src = "https://github.com/Qussk/RxSwift/blob/main/image/asyncg.gif?raw=true" width="200px">
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/syncg.gif?raw=true" width="300px">
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/asyncg.gif?raw=true" width="300px">
 </div>
 
 > 왼쪽 : 동기 ,  오른쪽:  비동기
@@ -311,5 +312,65 @@ func rxswiftLoadImage(from imageUrl: String) -> Observable<UIImage?> {
 
 
 
+
+
 ## Step2
 
+
+
+
+
+## PromiseKit
+- 작동방식이 Rx와 유사 -> 타입을 리턴하는 것.
+
+
+```swift
+import PromiseKit
+import UIKit
+
+class PromiseViewController: UIViewController {
+    // MARK: - Field
+    
+    var counter: Int = 0
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            self.counter += 1
+            self.countLabel.text = "\(self.counter)"
+        }
+    }
+
+    // MARK: - IBOutlet
+
+    @IBOutlet var imageView: UIImageView!
+    @IBOutlet var countLabel: UILabel!
+
+    // MARK: - IBAction
+
+    @IBAction func onLoadImage(_ sender: Any) {
+        imageView.image = nil
+
+        promiseLoadImage(from: LARGER_IMAGE_URL)
+            .done { image in
+                self.imageView.image = image
+            }.catch { error in
+                print(error.localizedDescription)
+            }
+    }
+
+    // MARK: - PromiseKit
+  //PromiseKit: 비동기를 쉽게 처리하는  라이브러리
+  //Promise를 만들어서 리턴하는 방식
+    func promiseLoadImage(from imageUrl: String) -> Promise<UIImage?> {
+        return Promise<UIImage?>() { seal in //1-2.seal이라는 데가
+            asyncLoadImage(from: imageUrl) { image in //1-1.image가 다운로드 완료되면
+
+                seal.fulfill(image)//1-3. fulfill. 완료됐어, 하고 넘겨주는 곳
+              
+              //덴, 던, 캐치... => 나온 이후~ 어떻게 사용하겠다
+            }
+        }
+    }
+}
+```
