@@ -22,26 +22,96 @@ RxSwift에 대한 학습
 **학습 활동**
 ## RxSwift 4시간에 끝내기
   - [머리말](#RxSwiftIn4Hours)
+  - [왜쓰냐?](#일반적인비동기방식)
   - [step1](#step1)
 
 
 
 ### observable
 
-[공식사이트 보기 : http://reactivex.io/documentation/ko/observable.html](http://reactivex.io/documentation/ko/observable.html) => 한국어 지원됨 !
+[공식사이트 보기](http://reactivex.io/documentation/ko/observable.html) => 한국어 지원됨 !
 
 
 
 ## RxSwiftIn4Hours
-:  RxSwift 4시간에 끝내기
 ![](https://github.com/iamchiwon/RxSwift_In_4_Hours/raw/master/docs/rxswift_in_4_hours_logo.png)
+>  RxSwift 4시간에 끝내기 
 
 
-[강좌 머리말 보기](https://github.com/iamchiwon/RxSwift_In_4_Hours/blob/master/README_s1.md)
 
-### Step1
+[강좌 머리말](https://github.com/iamchiwon/RxSwift_In_4_Hours/blob/master/README_s1.md)
 
-**Observable**
+
+## 일반적인비동기방식
+
+일반적인 DispatchQueue의 방식
+
+*Code*
+
+```swift
+import UIKit
+
+class AsyncViewController: UIViewController {
+    // MARK: - Field
+
+    var counter: Int = 0
+    let IMAGE_URL = "https://picsum.photos/1280/720/?random"
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            self.counter += 1
+            self.countLabel.text = "\(self.counter)"
+        }
+    }
+
+    // MARK: - IBOutlet
+
+    @IBOutlet var imageView: UIImageView!
+    @IBOutlet var countLabel: UILabel!
+
+    // MARK: - IBAction
+
+    @IBAction func onLoadSync(_ sender: Any) {
+        let image = loadImage(from: IMAGE_URL)
+        imageView.image = image
+    }
+
+  //DispatchQueue : 일반적인 비동기 처리방법
+    @IBAction func onLoadAsync(_ sender: Any) {
+        //global은 콘커런씨: 동시에 실행된다. 어씽크방식으로..
+      DispatchQueue.global().async {
+        guard let url = URL(string: self.IMAGE_URL) else { return }
+        guard let data = try? Data(contentsOf: url) else { return }
+        
+        let image = UIImage(data: data)
+        
+        DispatchQueue.main.async {
+          self.imageView.image = image
+        }
+      }
+    }
+
+    private func loadImage(from imageUrl: String) -> UIImage? {
+        guard let url = URL(string: imageUrl) else { return nil }
+        guard let data = try? Data(contentsOf: url) else { return nil }
+
+        let image = UIImage(data: data)
+        return image
+    }
+}
+```
+- 만약에 DispatchQueue으로 코딩을하고 있다면, 취소를 어떻게 할 수 있을까?
+- 1. 오퍼레이션 큐
+- 2. 캔슬 플러그하나두고, 켜도, 처리되는 내내 온오프 확인하는 그런 작업..
+ 
+ ==> 이런 귀찮은 작업을 안하기 위해 RxSwift을 쓴다. 
+ 
+ 
+
+## Step1
+
+### **Observable사용**
 - 처음시작할 때 `observeOn`을 해줘야한다.
 - Observable이라는 타입을 갖는 함수를 만든다. 
 - 받는 작업
@@ -110,7 +180,7 @@ class RxSwiftViewController: UIViewController {
 - image가 받아지면, seal이라는 데에서, OnNext. '완료됐어' 하고 넘겨주는 곳.
 
 
-**dispose()**
+### **dispose()사용**
 - 치우다.
 ```swift
 // MARK: - IBAction
@@ -166,7 +236,7 @@ func rxswiftLoadImage(from imageUrl: String) -> Observable<UIImage?> {
 
 
 
-**DisposeBag**
+### **DisposeBag사용**
 - Combine에서는 배열로 쓰는 것.
 - Disposable을 담는 Bag
 
@@ -221,5 +291,5 @@ func rxswiftLoadImage(from imageUrl: String) -> Observable<UIImage?> {
 
 
 
-### Step2
+## Step2
 
