@@ -4,26 +4,46 @@ RxSwift에 대한 학습
 
 *비동기 작업을 간결하게*
 
-
+- [공식사이트](http://reactivex.io/)
+- [Lee Campbel의 무료 튜토리얼](http://introtorx.com/)
+- [깃헙](https://github.com/ReactiveX/RxSwift)
+- [구슬 사이트(마블스)](https://rxmarbles.com/)
 
 
 - [RxSwift와 Combine 차이](https://qussk.github.io/2020/11/11/RxSwift%EC%99%80-Combin%EC%9D%98-%EC%B0%A8%EC%9D%B4)
+
+
 - 유사 라이브러리 
-  - [PromiseKit](#)
-
-
-
-**[문법 보기]**
-- [observable](#observable)
+  - [PromiseKit](#PromiseKit)
 
 
 
 
-**학습 활동**
+**[문법]**
+- [observable](http://reactivex.io/documentation/ko/observable.html)
+- [연산자](http://reactivex.io/documentation/ko/operators.html)
+-
+
+**신속**
+- [메모리누수 디버깅하기](#메모리누수)
+
+
+**💁🏻‍♀️학습 활동**
 ## RxSwift 4시간에 끝내기
   - [머리말](#RxSwiftIn4Hours)
   - [왜쓰냐?](#일반적인비동기방식)
   - [step1](#step1)
+    - [Observable사용](#Observable사용)
+    - [dispose사용](#dispose사용)
+    - [DisposeBag사용]
+      - .disposed(by: disposebag)
+  - [step2](#step2)
+    - [just](#just)
+    - [from](#from)
+    - [map](#map)
+    - [filter](#filter)
+    - [응용](#응용)
+  - [구슬읽기](#구슬읽기)  
 
 
 
@@ -201,7 +221,7 @@ class RxSwiftViewController: UIViewController {
 - image가 받아지면, seal이라는 데에서, OnNext. '완료됐어' 하고 넘겨주는 곳.
 
 
-### **dispose()사용**
+### **dispose사용**
 - 치우다.
 ```swift
 // MARK: - IBAction
@@ -317,7 +337,114 @@ func rxswiftLoadImage(from imageUrl: String) -> Observable<UIImage?> {
 ## Step2
 
 
+### just
 
+- 전달한 값이 바로 나옴
+```swift
+@IBAction func exJust1() {
+    Observable.just("Hello World") //just :바로 인자로 전달, 전달한 값이 바로 나옴.
+        .subscribe(onNext: { str in //인자의 첫번쨰 str으로 전달되어 "Hello World" 출력됨.
+            print(str)
+        })
+        .disposed(by: disposeBag)
+}
+//Hello World
+```
+```swift
+@IBAction func exJust2() {
+    Observable.just(["Hello", "World"])
+        .subscribe(onNext: { arr in
+            print(arr)
+        })
+        .disposed(by: disposeBag)
+}
+//["Hello", "World"]
+```
+
+
+### from
+- 요소가 하나씩 줄 바꿔서 내려옴
+```swift
+@IBAction func exFrom1() {
+    Observable.from(["RxSwift", "In", "4", "Hours"]) //하나씩 줄바꿔서 내려옴
+        .subscribe(onNext: { str in
+            print(str)
+        })
+        .disposed(by: disposeBag)
+}
+//RxSwift
+//In
+//4
+//Hours
+```
+- 만약 다른 타입이 끼여도 출력됨. "4"가 아니라 4(Int)여도 에러없음
+
+
+### map
+- just에 map을 끼게 되면 just한 내용이 map에 먼저 전달됨
+```swift
+@IBAction func exMap1() {
+    Observable.just("Hello") //1-1."Hello"전달
+        .map { str in "\(str) RxSwift" } //1-2.맵으로 인해 "\(str) RxSwift"(라고 붙은 것)이 전달 
+        .subscribe(onNext: { str in //1-3.그 아래 인자 str에 전달되어
+            print(str) //프린트됨//1-4. (코드실행)
+        })
+        .disposed(by: disposeBag)
+}
+//Hello RxSwift
+```
+- just 결과에 .map이 반영되어 내려보낸다. ===> 맵핑한다.
+
+
+```swift
+@IBAction func exMap2() {
+    Observable.from(["with", "곰튀김"]) //1-1.with부터 내려보냄.***(stream)
+        .map { $0.count } //1-1.map에 의해 인티저로 변환
+        .subscribe(onNext: { str in //1-3.str는 4가됨
+            print(str) //4 -> 이후 "곰튀김" 반복하게되면 3출력됨. 
+        })
+        .disposed(by: disposeBag)
+}
+//4
+//3
+```
+
+### filter
+- 참이면 아래로 보내고, 거짓이면 보내지 않음(스트림)
+```swift
+@IBAction func exFilter() {
+    Observable.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
+        .filter { $0 % 2 == 0 } //트루일때 내려가고 펄스일땐 내려가지 않음. (스트림)
+        .subscribe(onNext: { n in
+            print(n)
+        })
+        .disposed(by: disposeBag)
+}
+//2
+//4
+//6
+//8
+//10
+```
+
+### 응용
+```swift
+@IBAction func exMap3() {
+    Observable.just("800x600")
+        .map { $0.replacingOccurrences(of: "x", with: "/") } // "800/600"
+        .map { "https://picsum.photos/\($0)/?random" } //https://picsum.photos/800/600/?random
+        .map { URL(string: $0) } //url?로 변경
+        .filter { $0 != nil } //nil인지 아닌지 -> nil이면 거짓이므로 아래로 진행 안함.
+        .map { $0! } //url!
+        .map { try Data(contentsOf: $0) } //Data
+        .map { UIImage(data: $0) } //UIImage?
+        .subscribe(onNext: { image in //image로 전달하여
+            self.imageView.image = image //코드 반영
+        })
+        .disposed(by: disposeBag)
+}
+}
+```
 
 
 ## PromiseKit
@@ -374,3 +501,209 @@ class PromiseViewController: UIViewController {
     }
 }
 ```
+
+
+### 구슬읽기
+
+**just**
+![](/image/rx3.png)
+![](http://reactivex.io/documentation/ko/operators/images/just.c.png)
+- 빨간공을 넣으면 빨간공이나온다.
+- | 는 스트림.(컨플릭 나는 곳) 
+
+
+**from**
+![](/image/rx4.png)
+- array데이터를 from이라는 연산자를 이용하여 들어간 순서대로 생성
+- 생성연산자이기 때문에 ->(화살표가 나옴)
+- 6개 전달후 컨플릭
+
+**map**
+![](https://andreaslydemann.com/wp-content/uploads/2019/01/map-diagram.png)
+- map은 처음부터 쓸수 없고, 기존 스트림이 있는 곳에 스트림을 쓰는 곳
+- 화살표에서 화살표로
+- x가 들어오면 10을 곱해서 내려보냄. 
+
+**filter**
+![](https://miro.medium.com/max/1400/1*C6p2EmpmmnKQjJT7XpaqEg.png)
+- 10보다 큰 애들 내려보내기
+
+
+**first**
+![](/image/rx5.png)
+- 가장 먼저있는 것 보내기(순서주의)
+- 가장왼쪽에 있는 4만 내려보냄
+
+![](/image/rx6.png)
+- 공모양 중 가장 첫 번째인 것 
+
+![](/image/rx7.png)
+- 첫번째 이면서도 그게 나머지인 경우(컨플릭 시점 직전에 삽입)
+
+**single**
+![](/image/rx8.png)
+- 한개의 경우
+
+![](/image/rx9.png)
+- 싱글이면서 그 나머지의 경우 주황공 생성
+- 컨플릭 시점 직전에 삽입
+
+![](/image/rx10.png)
+- 튜플
+- 유일한 항목을 내보내는 경우
+- 좀더 이해 필요
+
+**flatMap**
+![](/image/rx11.png)
+- 동그란 공 넣으면 마름모로 변경하면서 마름모 +2 개로됨
+- 시점 확인 (빨간공 두개, 녹색공 넣는 순간 녹색 마름모2개 생성되는 사이에 파란공 넣어 지면서 녹파녹파 진행.) ==> 중첩
+- .map은 데이터를 넣으면 데이터 타입이 나오는데 .flatmap을 넣으면 스트림이 나옴.(하나로 합쳐서 들어온 순서대로 내보내 준다.)
+
+**concent**
+![](/image/rx12.png)
+
+- 앞에 것 종료되면 뒤에 것 시작
+
+
+
+### 테스트
+- 정상적인 구슬치기를 하기 위해서는 1.넥스트, 2.컨플릭, 3.에러 모두 처리할 수 있어야한다. 
+
+
+*예제1*
+- 기본타입 : **event 타입**으로 설정하기
+```swift
+@IBAction func exJust1() {
+  Observable.just("Hello, World") //스트림이 생성.
+    //subscribe: 자이제 됐어, 나 이제 그 데이터 최정적으로 사용할거야.
+ //   .subscribe(<#T##on: (Event<String>) -> Void##(Event<String>) -> Void#>)
+    .subscribe { event in //event타입 이름정의
+      switch event { //이벤트는 
+      case .next(let str): // .next(데이타 전달받음)
+        break
+      case .completed:     //.completed(컨플릭)
+        break
+      case .error(let err): // error(에러)가 있음
+        break
+      }
+      //다른 옵저버블들은 타입이 스트림임. 하지만 subscribe은 disposeble임 그래서 마지막에 bag에 넣어서 처리해야함.
+    }.disposed(by: disposeBag)
+}
+```
+**subscribe**
+- subscribe : 모든 오퍼레이터의 여정을 거친후 최종적으로 subscribe함.(마지막에 쓰는 것.)
+- `.subscribe()`은 실행만하고 결과를 신경쓰고 싶지 않을 때 쓴다.
+- 기본형은 `.subscribe(<#T##on: (Event<String>) -> Void##(Event<String>) -> Void#>)`이다.  ==> 이벤트타입!!!
+- 스트림은 에러가 나거나 컨플릭되면 종료됨!!
+
+*예제2*
+- **():** 실행만 하기
+```swift
+@IBAction func exJust1() {
+  Observable.from(["RxSwift", "In", "4", "Hours"]) 
+    .subscribe { event in 
+      switch event { 
+      case .next(let str): 
+        print("next: \(str)")
+        break
+      case .completed:    
+       print("completed")
+       break
+      case .error(let err): 
+       print("error: \(err.localizedDescription)")
+       break
+       }
+    }.disposed(by: disposeBag)
+}
+//next: RxSwift
+//next: In
+//next: 4
+//next: Hours
+//completed
+```
+- 만약 from의 array방식이라면 next는 4번 도는 것이다. subscribe쪽에 event가 4번 호출
+- **completed**은 맨 마지막에 나온다.
+- 에러는 발생하지 않았다.
+
+*에러 발생시키기*
+- 예제2에 single()오퍼레이터를 추가해보자(싱글이 아니기 때문에 오류남. from은 다수고)
+```
+next: RxSwift
+error: The operation couldn’t be completed. (RxSwift.RxError error 5.)
+```
+
+*예제3*
+- **(onNext : ....) :** 원하는 것만 골라쓰기.
+- ` .subscribe(onNext: <#T##((String) -> Void)?##((String) -> Void)?##(String) -> Void#>, onError: <#T##((Error) -> Void)?##((Error) -> Void)?##(Error) -> Void#>, onCompleted: <#T##(() -> Void)?##(() -> Void)?##() -> Void#>, onDisposed: <#T##(() -> Void)?##(() -> Void)?##() -> Void#>)` 이것도 있다.
+- 이걸 쓰는 이유, 예제2의 event에서 swich로 처리할 경우 하나라도 안쓰면 swich가 뭐라고 하고 코드도 길다. 
+- 그래서, `onNext` 하나만 할거야!!! 선언, 나머지는 옵셔널이니까. 기능을 추가하고 싶은 경우 ,(쉼표)를 사용하여 추가해나가면 됨.
+
+```swift
+@IBAction func exJust1() {
+  Observable.from(["RxSwift", "In", "4", "Hours"]) 
+    .subscribe(onNext: { s in 
+    print(s)
+    }, onCompleted: {
+    print("completed")
+    })
+    .disposed(by: disposeBag)
+}
+```
+- disposed는 종료됨을 의미함 , 그래서 컨플릭,에러도 디스포즈드...
+- 방식 : next와 error는 이름정의 필요. onComleted와 onDisposed는 필요없음.
+- 그래서, onDisposed에서 disposed가 불리는 경우는 컨플릭나거나 에러나는 경우, 디스포서블에 디스포즈드를 일부러 호출해서 취소시키는 경우.
+
+
+*예제4*
+- 함수 바깥에 빼서 쓰기
+
+```swift
+func outPut(_ str: Any) -> Void {
+  print(str)
+}
+
+  @IBAction func exFrom1() {
+      Observable.from(["RxSwift", "In", 4, "Hours"]) //하나씩 줄바꿔서 내려옴
+          .subscribe(onNext: { outPut in
+              print(outPut)
+          })
+          .disposed(by: disposeBag)
+  }
+```
+- next를 정의하면 `(_ str: Any) -> Void`이런 타입임. 
+- 위 형식으로 함수를 만들어서 뺸후, 정의 부분(클로저 부분)에 넣어서 써도 됨. 
+
+
+
+### 
+
+
+
+
+### 메모리누수
+
+: 메모리누수 디버깅하기
+```swift
+/* 아래 함수에 해당 코드를 추가
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplicationLaunchOptionsKey : Any]? = nil)
+  */
+  
+  _ = Observable<Int>.interval(1, scheduler: MainScheduler.instance)
+      .subscribe(onNext: { _ in
+          print("Resource count \(RxSwift.Resources.total)")
+      })
+```
+메모리 누수를 테스트하기 위한 여러가지
+- 원하는 화면으로 가서 작동한다
+- 뒤로 돌아간다
+- 초기 자원 갯수를 관찰한다
+- 다시 그 화면으로 돌아가서 같은 작업을 한다
+- 뒤로 돌아간다
+- 마지막 자원 갯수를 관찰한다
+
+> 처음과 끝의 자원 객수가 다르다면, 어디선가 메모리 누수가 발생하고 있다는 뜻!!
+> 네비게이션을 하나가 아닌 둘로 확인하는 것을 추천하는 이유는 첫번째 네비게이션은 자원을 게으르게 불러오도록 강요하기 때문입니다.??
+
+
+
+
