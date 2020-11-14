@@ -44,7 +44,7 @@ RxSwift에 대한 학습
     - [filter](#filter)
     - [응용](#응용)
   - [구슬읽기](#구슬읽기)  
-
+  - [스케쥴러](#스케쥴러)
 
 
 ### observable
@@ -654,6 +654,24 @@ error: The operation couldn’t be completed. (RxSwift.RxError error 5.)
 - 그래서, onDisposed에서 disposed가 불리는 경우는 컨플릭나거나 에러나는 경우, 디스포서블에 디스포즈드를 일부러 호출해서 취소시키는 경우.
 
 
+*축약*
+```swift
+@IBAction func exJust1() {
+  Observable.from(["녕","란","똥"])
+    .subscribe(onNext: { n in
+    print("next: \(n)")
+    },
+    onError: { e in
+    print("err: \(e)")
+    },
+    onCompleted: { print("completed")
+    },
+    onDisposed: { print("disposed")
+    })
+    .disposed(by: disposeBag)
+```
+
+
 *예제4*
 - 함수 바깥에 빼서 쓰기
 
@@ -674,8 +692,87 @@ func outPut(_ str: Any) -> Void {
 - 위 형식으로 함수를 만들어서 뺸후, 정의 부분(클로저 부분)에 넣어서 써도 됨. 
 
 
+### 스케쥴러
 
-### 
+
+```swift
+@IBAction func exMap3() {
+    Observable.just("800x600")
+        .map { $0.replacingOccurrences(of: "x", with: "/") } // "800/600"
+        .map { "https://picsum.photos/\($0)/?random" } //https://picsum.photos/800/600/?random
+        .map { URL(string: $0) } //url?로 변경
+        .filter { $0 != nil } //nil인지 아닌지 -> nil이면 거짓이므로 아래로 진행 안함.
+        .map { $0! } //url!
+        .map { try Data(contentsOf: $0) } //Data
+        .map { UIImage(data: $0) } //UIImage?
+        .subscribe(onNext: { image in //image로 전달하여
+            self.imageView.image = image //코드 반영
+        })
+        .disposed(by: disposeBag)
+}
+```
+- 해당 코드를 실행하게 되면 사진을 불러오는동안 스크롤이 안됨 ==> 이유 : 작업이 모두 메인쓰레드에 있기 때문
+- .오퍼레이터들이 모두 메인쓰레드에 직렬화로 있는 것임. 
+- 그래서 **Concurrent**로 동시에 처리되도록(분산처리되도록) 해결해야함. ==> 메인쓰레드가 아닌 곳에서 실행.
+
+
+**2가지 방법**
+
+> observeOn으로 작업을 Concurrent로 분산처리한다. 
+```swift
+@IBAction func exMap3() {
+    Observable.just("800x600")
+      .observeOn(ConcurrentDispatchQueueScheduler.init(qos: .default))//--> Concurrent로 보내기(이미지 다운로드 작업)
+        .map { $0.replacingOccurrences(of: "x", with: "/") } // "800/600"
+        .map { "https://picsum.photos/\($0)/?random" } //https://picsum.photos/800/600/?random
+        .map { URL(string: $0) } //url?로 변경
+        .filter { $0 != nil } //nil인지 아닌지 -> nil이면 거짓이므로 아래로 진행 안함.
+        .map { $0! } //url!
+        .map { try Data(contentsOf: $0) } //Data
+        .map { UIImage(data: $0) } //UIImage?
+      .observeOn(MainScheduler.instance)//---->main으로 돌아오기 (이미지 표시작업)
+        .subscribe(onNext: { image in //image로 전달하여
+            self.imageView.image = image //코드 반영
+        })
+        .disposed(by: disposeBag)
+  }
+}
+```
+- `observeOn(ConcurrentDispatchQueueScheduler.init(qos: .default))` <== 애플이 제공해줌
+- qos의 속성은 지정가능하다. 
+- 이미지 셋팅(화면작업)은 다시 main으로 돌아와야하기 때문에 `          .observeOn(MainScheduler.instance)`을 추가해줌.
+- 화면에 대한 작업은 무조건 메인쓰레드에서 진행해야함!!!
+- `.observeOn` 이후 코드들에 대한 스케쥴러 변경. 이후 코드들에게 영향미침
+
+
+> subscribeOn으로 작업을 Concurrent로 분산처리한다. 
+
+```swift
+@IBAction func exMap3() {
+    Observable.just("800x600")
+        .map { $0.replacingOccurrences(of: "x", with: "/") }
+        .map { "https://picsum.photos/\($0)/?random" } 
+        .map { URL(string: $0) } 
+        .filter { $0 != nil }
+        .map { $0! } 
+      .subscribeOn(ConcurrentDispatchQueueScheduler.init(qos: .default)) //--> 아무곳에나 있어도됨. ".subscribe 되는 순간, 선택된 스케쥴러로 모두 적용하겠다.
+        .map { try Data(contentsOf: $0) } 
+        .map { UIImage(data: $0) } 
+        .observeOn(MainScheduler.instance)//---->main으로 돌아오기
+        .subscribe(onNext: { image in 
+            self.imageView.image = image 
+        })
+        .disposed(by: disposeBag)
+}
+```
+observeOn이랑 뭐가 달라??
+- Observable의 첫번째 줄 부터 영향미치게 하고 싶다! 하면 `subscribeOn`사용.
+- `subscribeOn`은 순서관계없이 아무데다가 적용해도됨. `.subscribe`될때 부터    적용하겠다!!! 라는 의미라서. 
+
+
+
+
+
 
 
 
