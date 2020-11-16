@@ -2,7 +2,11 @@
 RxSwift에 대한 학습
 
 
+RxSwift 란?
 *비동기 작업을 간결하게*
+*API다, 비동기적으로 스트림하기 위한 프로그래밍, 그리고, 옵저버블을 스트림한다.*
+
+
 
 - [공식사이트](http://reactivex.io/)
 - [Lee Campbel의 무료 튜토리얼](http://introtorx.com/)
@@ -38,6 +42,7 @@ RxSwift에 대한 학습
     - [DisposeBag사용](#DisposeBag사용)
       - .disposed(by: disposebag)
   - [step2](#step2)
+    - operators
     - [just](#just)
     - [from](#from)
     - [map](#map)
@@ -50,13 +55,23 @@ RxSwift에 대한 학습
   - [사이드 이펙트](#사이드이펙트)
     - subscribe
     - [do](#do)
- - [step3](#step3)   
+ - [step3](#step3)  
+   - [orEmpty](#orEmpty) 
    - [Observables결합하기](#Observables결합하기)
      - [CombineLatest](#CombineLatest)
      - [zip](#zip)
      - [merge](#merge)
-     
-     
+   - [Subject](#Subject)
+     - [AsyncSubject](#AsyncSubject)
+     - [BehaviorSubject](#BehaviorSubject)
+     - [PublishSubject](#PublishSubject)
+     - [ReplaySubject](#ReplaySubject)
+  - 추가내용
+    - driver
+    
+    
+    
+    
 ### observable
 
 [공식사이트 보기](http://reactivex.io/documentation/ko/observable.html) => 한국어 지원됨 !
@@ -853,7 +868,7 @@ observeOn이랑 뭐가 달라??
 // pw input +--> check valid --> bullet
 ```
 
-*기본형*
+*실습예제*
 
 <div>
 <img src = "https://github.com/Qussk/RxSwift/blob/main/image/merge3.gif?raw=true" width="200px">
@@ -886,6 +901,7 @@ private func checkPasswordValid(_ password: String) -> Bool {
 }
 ```
 
+### orEmpty
 *map으로 checkEmailValid함수를 불러와 처리하려는 데 오류난다.*
 ```swift
 idField.rx.text
@@ -909,7 +925,7 @@ idField.rx.text.orEmpty
 .disposed(by: disposeBag)
 ```
 - 그래서 위처럼 길게 쓸 필요없이 `orEmpty`만 처리해주면 알아서 옵셔널 바인딩처리됨.
-
+- orEmpty은 컨플릭 나지 않음( UI에 대한 인풋 컨플릭 안남.)
 
 "https://github.com/Qussk/RxSwift/blob/main/image/merge4.gif?raw=true" width="300px">
 
@@ -986,7 +1002,180 @@ resultSelector: { s1, s2 in s1 && s2 }
 
 
 
+### 심화
+: Observables결합 심화로 보기
 
+- input : 아이디 입력, 비번 입력
+- output : 블릿(빨간점), 로그인버튼 이네이블
+
+```swift
+private func bindUI() {
+  
+  let idinputOb = idField.rx.text.orEmpty.asObservable()
+  let idValideOb = idinputOb.map(checkEmailValid)
+  
+  let pwinputOb = pwField.rx.text.orEmpty.asObservable()
+  let pwValidOb = pwinputOb.map(checkPasswordValid)
+  
+  Observable.combineLatest(idValideOb, pwValidOb, resultSelector: { $0 && $1 })
+    .subscribe(onNext: { b in
+      self.loginButton.isEnabled = b
+    })
+    .disposed(by: disposeBag)
+  
+```
+- 이런식으로 Observable타입으로 만들어서 변수선언하여 사용가능
+(코드양 줄어듦!)
+
+
+## Subject
+
+: Subject 4가지
+- AsyncSubject
+- BehaviorSubject
+- PublishSubject
+- ReplaySubject
+
+
+
+### AsyncSubject
+
+![](/image/rx16.png)
+
+- 빨간공, 녹색공, 파란공, 컨플릭 ===> 끝내기. 
+- 끝이 나야 전달함. 
+- 끝났을 때 시점에 subscribe한 곳에 가장 마지막 데이터를 전달.
+
+
+
+### BehaviorSubject
+
+
+![](/image/rx13.png)
+
+- subscribe를 하면 디폴트 값(value: 핑크공)을 내려준다. stream에 data(빨,녹,파)가 발생하면 핑크공에게 전달해준다. 
+- 만약, data가 발생한 이후에 다른 놈이 subscribe한다면, 그에 마지막 값인 녹색공을 내려보내주고, 그 다음부터 발생하는 값들을 또 받아 온다. 
+- 그 전에 했던놈, 나중에 했던놈...이런식으로 subscribe했다면 걔네한테 받아 올 수 있다.
+- 옵저버블 타입이고 스스로 데이터를 가지고 있음.==> 스스로 데이타를 발생할수 있는 놈.
+- 그러므로, subscribe는 원래 데이터를 가지고 있는 놈이고, 외부에서 데이타가 발생하면 데이터를 넣어 줄 수 있는 놈.
+- 즉, 데이터도 넣을 수 있고, subscribe도 할 수 있는 놈
+
+```swift
+var idValiad : BehaviorSubject<Bool> = BehaviorSubject(value: false)
+var pwValiad : BehaviorSubject<Bool> = BehaviorSubject(value: false)
+```
+
+```swift
+private func bindUI() {
+  
+  let idinputOb = idField.rx.text.orEmpty.asObservable()
+  let idValideOb = idinputOb.map(checkEmailValid)
+
+  idValideOb.subscribe(onNext: { b in
+      self.idValiad.onNext(b)
+    })
+  
+```
+- 옵져버블타입이지만 데이터를 넣을 수 있음
+-  `idValideOb`에서 데이터가 발생하고, 그 데이터를 `subscribe`로 받아 먹을 수 있음.
+- `idValiad.onNext(b)`이렇게 데이터를 넣어 줄 수 있음
+- .onNext로 subject를 이용해서 외부의 값을 받아오는 것.
+- just나 from등의 오퍼레이터들은 데이터를 직접생성하였느나 subject는 통로역할을 하면서 데이터를 받아옴. 통로만 만들고 나중에 데이터만 받아오는 것.
+```swift
+private func bindUI() {
+  
+  let idinputOb = idField.rx.text.orEmpty.asObservable()
+  let idValideOb = idinputOb.map(checkEmailValid)
+
+  idValideOb.subscribe(onNext: { b in
+      self.idValiad.bind(to: idValiad)
+    })
+```
+- 이런 식으로도 사용가능. input으로 들어온 값은 밖에다가 저장.
+
+```swift
+private func bindUI() {
+  
+  //input 데이터 처리
+  let idinputOb = idField.rx.text.orEmpty.asObservable()
+  idinputOb.map(checkEmailValid)
+   .bind(to: idValiad)
+   .disposed(by: disposeBag)
+```
+- 축약으로, input에 대한 값은 이렇게 처리될 수 있다. 
+
+> Stting값 받기(최종본)
+```swift
+var idText : BehaviorSubject<String> = BehaviorSubject(value: "")
+var pwText : BehaviorSubject<String> = BehaviorSubject(value: "")
+var idValiad : BehaviorSubject<Bool> = BehaviorSubject(value: false)
+var pwValiad : BehaviorSubject<Bool> = BehaviorSubject(value: false)
+```
+```swift
+// MARK: - Bind UI
+private func bindInPut() {
+
+  //1. input 데이터 처리 : 아이디 입력, 패스워드 입력
+  idField.rx.text.orEmpty
+    .bind(to: idText) //1-1.bind로 idText(String)값을 받고 idText에 저장
+    .disposed(by: disposeBag)
+  
+  idText //저장된 거에서 가져오기
+  .map(checkEmailValid) //체크도하고
+  .bind(to: idValiad) //1-2. idValiad(Bool)값도 받고, idValiad에 저장
+  .disposed(by: disposeBag)
+  
+  pwField.rx.text.orEmpty
+    .bind(to: pwText)
+    .disposed(by: disposeBag)
+  
+  pwText
+    .map(checkPasswordValid)
+    .bind(to: pwValiad)
+    .disposed(by: disposeBag)
+}
+
+private func bindOutPut(){
+//2. 블릿, 로그인버튼
+// 저장했던 것들(input데이터)을 보게 해주는것 ==> 다른 메소드에 있어도 됨.
+idValiad.subscribe(onNext: { c in //2-2. 1-2에서 받았던 idValiad 값을 가져옴.=> 가져올 수 있는건 subject를 전역 변수로 놓았기 때문. 
+  self.idValidView.isHidden = c
+})
+.disposed(by: disposeBag)
+
+pwValiad.subscribe(onNext: { b in
+  self.pwValidView.isHidden = b
+})
+.disposed(by: disposeBag)
+
+Observable.combineLatest(idValiad, pwValiad, resultSelector: { $0 && $1 })
+  .subscribe(onNext: { b in
+    self.loginButton.isEnabled = b
+  })
+  .disposed(by: disposeBag)
+}
+```
+- 저장된 데이터를 다른 메소드에서 쓸 수 도 있음
+
+
+
+### PublishSubject
+![](/image/rx14.png)
+- subscribe을 하면 아무것도 안줌
+- 디폴트 값이 없음
+- 아무것도 주지 않지만, 데이타가 발생하면, subscribe할때 줄게.
+
+
+
+### ReplaySubject
+![](/image/rx15.png)
+- PublishSubject처럼 처음에 아무것도 주지 않음. 
+- 빨간공이 발생해서 subscribe한 애한테 전달. 녹색공이 발생해서 subscribe한 애한테 전달.
+- 다른 놈이 subscribe하면, 여태까지 발생했던거 모두 전달해준후 다음 것(파란공) 발생하면 다음것 넣어줌
+ 
+ ### 추가내용
+ 
+ ### driver
 
 
 
