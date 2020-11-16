@@ -142,7 +142,7 @@ class AsyncViewController: UIViewController {
 ## Step1
 
 <div>
-<img src = "https://github.com/Qussk/RxSwift/blob/main/image/rxg1.gif?raw=true" width="200px">
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/rxg1.gif?raw=true" width="300px">
 </div>
 
 Rx의 방식 
@@ -718,6 +718,11 @@ func outPut(_ str: Any) -> Void {
 
 **2가지 방법**
 
+![](/image/syncg1.gif)
+
+
+> 왼: **동기 상태를** 오: **비동기로**
+
 > observeOn으로 작업을 Concurrent로 분산처리한다. 
 ```swift
 @IBAction func exMap3() {
@@ -770,6 +775,13 @@ observeOn이랑 뭐가 달라??
 - `subscribeOn`은 순서관계없이 아무데다가 적용해도됨. `.subscribe`될때 부터    적용하겠다!!! 라는 의미라서. 
 
 
+
+
+
+
+
+### 사이드이펙트
+- 외부의 영향을 주는 부분. 사전적의미 : 원래의 목적과 다르게 다른효과 또는 부작용.
 
 
 
