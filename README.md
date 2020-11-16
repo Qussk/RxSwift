@@ -851,6 +851,12 @@ observeOn이랑 뭐가 달라??
 ```
 
 *기본형*
+
+<div>
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/merge3.gif?raw=true" width="200px">
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/merge2.gif?raw=true" width="300px">
+</div>
+
 ```swift
 // MARK: - Bind UI
 
