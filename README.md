@@ -51,6 +51,7 @@ RxSwift에 대한 학습
     - subscribe
     - [do](#do)
  - [step3](#step3)   
+   - [Observables결합하기](#Observables결합하기)
 
 ### observable
 
@@ -826,15 +827,142 @@ observeOn이랑 뭐가 달라??
 - subscribe나 do에서만 하자.
 
 
-## step3   
-
-
 ### RxCocoa
 - UIKit에 View다룰 때 좋을만한 extension들이 추가로 있음.
 - `pod RxCocoa`
 
 
+## step3   
+: 실습
+- 개발 목표
+```
+- email,pw 의 형식이 맞지 않은 경우 [빨간불] 
+- 형식 맞으면 로그인 버튼 활성화
+- 로그인 버튼 누르면 곰튀김 화면
+==> 버튼은 (Enabled)처리되어있음.
+```
+- 개발 요구사항
+```
+// id input +--> check valid --> bullet
+//          |
+//          +--> button enable
+//          |
+// pw input +--> check valid --> bullet
+```
 
+*기본형*
+```swift
+// MARK: - Bind UI
+
+private func bindUI() {
+  
+  //rx 우리가 취급하는 것을 비동기로 받겠다! 선언
+  //하나하나 stream에 흘러들어감.
+  idField.rx.text.subscribe(onNext: { s in
+    print(s)
+  })
+  .disposed(by: disposeBag)
+}
+
+// MARK: - Logic
+
+//email 형식 구분
+private func checkEmailValid(_ email: String) -> Bool {
+    return email.contains("@") && email.contains(".")
+}
+//pw형식 구분
+private func checkPasswordValid(_ password: String) -> Bool {
+    return password.count > 5
+}
+}
+```
+
+*map으로 checkEmailValid함수를 불러와 처리하려는 데 오류난다.*
+```swift
+idField.rx.text
+.filter{ $0 != nil} //1-2
+.map{ $0! }//1-3
+.map(checkEmailValid) //1-1.에러나는 이유. checkEmailValid은 String인데 이건 옵셔널String임 위 (1-2.1-3.추가)
+.subscribe(onNext: { s in
+  print(s)
+})
+.disposed(by: disposeBag)
+```
+- checkEmailValid()함수는 String인데, 현재 .map의 subscribe은 옵셔널 String임
+- 1-2, 1-3 으로 해결할 수 있지만, RxCocoa에서 이를 단순화하는 extension을 제공한다 .   `orEmpty`
+
+```swift
+idField.rx.text.orEmpty
+.map(checkEmailValid)
+.subscribe(onNext: { s in
+  print(s)
+})
+.disposed(by: disposeBag)
+```
+- 그래서 위처럼 길게 쓸 필요없이 `orEmpty`만 처리해주면 알아서 옵셔널 바인딩처리됨.
+
+
+
+### Observables결합하기
+
+
+**예시코드**
+```swift
+idField.rx.text.orEmpty
+.map(checkEmailValid)
+.subscribe(onNext: { b in
+  self.idValidView.isHidden = b
+})
+.disposed(by: disposeBag)
+
+pwField.rx.text.orEmpty
+  .map(checkPasswordValid)
+  .subscribe(onNext: { p in
+    self.pwValidView.isHidden = p
+  })
+  .disposed(by: disposeBag)
+```
+- Hidden 처리된 코드
+
+
+### CombineLatest
+- [CombineLatest](http://reactivex.io/documentation/operators/combinelatest.html)
+: **CombineLatest** — (컴바인 레이티스트)두 개의 Observable 중 하나가 항목을 배출할 때 배출된 마지막 항목과 다른 한 Observable이 배출한 항목을 결합한 후 함수를 적용하여 실행 후 실행된 새로운 결과를 배출한다.
+- id, pw 두개의 결과를 받아들이는데, 옵저버블 중 하나라도 항목을 배출할 경우 마지막으로 배출된 항목들을 결합시켜서 배출하는 것.
+- (어느한 쪽이라도 바뀌면 결과를 두 개 다 볼 수 있게)
+
+![](/image/latest.png)
+
+```swift
+Observable.combineLatest(
+  idField.rx.text.orEmpty.map(checkEmailValid), //소스1 아이디 입력값.벨리드하냐안하냐
+  pwField.rx.text.orEmpty.map(checkPasswordValid), //소스2 메일입력값.벨리드하냐안하냐
+resultSelector: { s1, s2 in s1 && s2 }
+)
+.subscribe(onNext: { b in
+  self.loginButton.isEnabled = b
+})
+.disposed(by: disposeBag)
+}
+```
+- 두개의 결과를 모두 볼 수 있도록
+- 여러개중에  소스1, 소스2, resultSelector를 선택했음. 여기서 resultSelector는 소스1,소스2 두개의 결과를 받아서 하나만 결정 해줘라!
+- 둘다 변경된 상태를 보고 내가 원하는 상태로 결정하겠다. 
+
+
+### zip
+- [zip](http://reactivex.io/documentation/operators/zip.html)
+- 명시한 함수를 통해 여러 Observable들이 배출한 항목들을 결합하고 함수의 실행 결과를 배출한다.
+- 두개를 주면 둘 다 데이터가 만들어지면 그제서야 데이터 전달. 
+- 만약에 한쪽의 데이터가 바뀌었다, 하지만 다른 한쪽은 유지되어있다. 그럼 나머지 하나의 nextOn 변경되지 않았기 때문에 데이터 전달이 안됨. 둘다 새로운 next가 되어야 전달됨.
+- (현재 예제와 맞지않아 사용안함)
+
+### merge
+- [merge](http://reactivex.io/documentation/operators/merge.html)
+- 복수 개의 Observable들이 배출하는 항목들을 머지시켜 하나의 Observable로 만든다
+- 두 개의 String을 받는데, 여기 데이터나, 저기 데이터나 전달이됨, 셀렉할 수 있는게 아니라 순서대로 그냥 전달해줌.
+- 밑으로 그냥 순서대로 내려 보내줌. 
+- (현재 예제와 맞지않아 사용안함)
 
 
 
