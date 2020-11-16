@@ -35,7 +35,7 @@ RxSwift에 대한 학습
   - [step1](#step1)
     - [Observable사용](#Observable사용)
     - [dispose사용](#dispose사용)
-    - [DisposeBag사용]
+    - [DisposeBag사용](#DisposeBag사용)
       - .disposed(by: disposebag)
   - [step2](#step2)
     - [just](#just)
@@ -45,7 +45,12 @@ RxSwift에 대한 학습
     - [응용](#응용)
   - [구슬읽기](#구슬읽기)  
   - [스케쥴러](#스케쥴러)
-
+    - [observeOn](#observeOn)
+    - [subscribeOn](#subscribeOn)
+  - [사이드 이펙트](#사이드이펙트)
+    - subscribe
+    - [do](#do)
+ - [step3](#step3)   
 
 ### observable
 
@@ -724,8 +729,9 @@ func outPut(_ str: Any) -> Void {
 </div>
 
 
-> 왼: **동기 상태(사진 불러오는 중 화면 스크롤 안됨.)를**  오: **비동기(사진 불러오는 것과 관계없이 화면 스크롤 가능.)로**
+> 왼: **동기 상태(사진 불러오는 중 화면 스크롤 안됨.)를**  오: **비동기(사진 불러오는 것과 관계없이 화면 스크롤 가능.)로...**
 
+### observeOn
 > observeOn으로 작업을 Concurrent로 분산처리한다. 
 ```swift
 @IBAction func exMap3() {
@@ -752,7 +758,7 @@ func outPut(_ str: Any) -> Void {
 - 화면에 대한 작업은 무조건 메인쓰레드에서 진행해야함!!!
 - `.observeOn` 이후 코드들에 대한 스케쥴러 변경. 이후 코드들에게 영향미침
 
-
+### subscribeOn
 > subscribeOn으로 작업을 Concurrent로 분산처리한다. 
 
 ```swift
@@ -781,10 +787,51 @@ observeOn이랑 뭐가 달라??
 
 
 
-
-
 ### 사이드이펙트
 - 외부의 영향을 주는 부분. 사전적의미 : 원래의 목적과 다르게 다른효과 또는 부작용.
+`self` 외부에 셋팅하고 전달해줘야하기때문에, 사이드 이펙트 부분이 됨. 
+
+- 사이드 이펙트 허용해주는 곳 : **subscribeOn***, **do**
+
+### do
+*기본형*
+```swift
+.do(onNext:<#T##((UIImage?) throws -> Void)?##((UIImage?) throws -> Void)?##(UIImage?) throws -> Void#>, afterNext: <#T##((UIImage?) throws -> Void)?##((UIImage?) throws -> Void)?##(UIImage?) throws -> Void#>, onError: <#T##((Error) throws -> Void)?##((Error) throws -> Void)?##(Error) throws -> Void#>, afterError: <#T##((Error) throws -> Void)?##((Error) throws -> Void)?##(Error) throws -> Void#>, onCompleted: <#T##(() throws -> Void)?##(() throws -> Void)?##() throws -> Void#>, afterCompleted: <#T##(() throws -> Void)?##(() throws -> Void)?##() throws -> Void#>, onSubscribe: <#T##(() -> Void)?##(() -> Void)?##() -> Void#>, onSubscribed(서브스크라이브하고 나서): <#T##(() -> Void)?##(() -> Void)?##() -> Void#>, onDispose: <#T##(() -> Void)?##(() -> Void)?##() -> Void#>)
+```
+- 위의 옵저버블 들이 지나가고, onNext에 image가 들어올때, 이것 한 번 쓱 훑어줘.
+
+```swift
+@IBAction func exMap3() {
+    Observable.just("800x600")
+        .map { $0.replacingOccurrences(of: "x", with: "/") }
+        .map { "https://picsum.photos/\($0)/?random" } 
+        .map { URL(string: $0) } 
+        .filter { $0 != nil }
+        .map { $0! } 
+      .subscribeOn(ConcurrentDispatchQueueScheduler.init(qos: .default)) 
+        .map { try Data(contentsOf: $0) } 
+        .map { UIImage(data: $0) } 
+        .observeOn(MainScheduler.instance)
+      .do(onNext: { image in //--> 외부영향 허용 부분
+        print(image?.size)
+      })
+        .subscribe(onNext: { image in //-> 외부영향 허용 부분
+            self.imageView.image = image 
+        })
+        .disposed(by: disposeBag)
+}
+}
+```
+- 외부영향 끼쳐야하는 것. 외부에 이미지 셋팅, 불러오기.
+- subscribe나 do에서만 하자.
+
+
+## step3   
+
+
+### RxCocoa
+- UIKit에 View다룰 때 좋을만한 extension들이 추가로 있음.
+- `pod RxCocoa`
 
 
 
