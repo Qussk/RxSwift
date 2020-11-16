@@ -718,10 +718,13 @@ func outPut(_ str: Any) -> Void {
 
 **2가지 방법**
 
-![](/image/syncg1.gif)
+<div>
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/syncg1.gif?raw=true" width="300px">
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/asyncg2.gif?raw=true" width="300px">
+</div>
 
 
-> 왼: **동기 상태를** 오: **비동기로**
+> 왼: **동기 상태(사진 불러오는 중 화면 스크롤 안됨.)를**  오: **비동기(사진 불러오는 것과 관계없이 화면 스크롤 가능.)로**
 
 > observeOn으로 작업을 Concurrent로 분산처리한다. 
 ```swift
