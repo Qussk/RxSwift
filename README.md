@@ -52,11 +52,14 @@ RxSwift에 대한 학습
     - [do](#do)
  - [step3](#step3)   
    - [Observables결합하기](#Observables결합하기)
-
+     - [CombineLatest](#CombineLatest)
+     - [zip](#zip)
+     - [merge](#merge)
+     
+     
 ### observable
 
 [공식사이트 보기](http://reactivex.io/documentation/ko/observable.html) => 한국어 지원됨 !
-
 
 
 
@@ -908,11 +911,17 @@ idField.rx.text.orEmpty
 - 그래서 위처럼 길게 쓸 필요없이 `orEmpty`만 처리해주면 알아서 옵셔널 바인딩처리됨.
 
 
+"https://github.com/Qussk/RxSwift/blob/main/image/merge4.gif?raw=true" width="300px">
+
+- 참, 거짓으로 처리.
+
 
 ### Observables결합하기
 
 
 **예시코드**
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/merge5.gif?raw=true" width="300px">
+
 ```swift
 idField.rx.text.orEmpty
 .map(checkEmailValid)
@@ -932,6 +941,11 @@ pwField.rx.text.orEmpty
 
 
 ### CombineLatest
+
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/merge1.gif?raw=true" width="300px">
+- 두 값을 받아 isEnabled 처리
+
+
 - [CombineLatest](http://reactivex.io/documentation/operators/combinelatest.html)
 : **CombineLatest** — (컴바인 레이티스트)두 개의 Observable 중 하나가 항목을 배출할 때 배출된 마지막 항목과 다른 한 Observable이 배출한 항목을 결합한 후 함수를 적용하여 실행 후 실행된 새로운 결과를 배출한다.
 - id, pw 두개의 결과를 받아들이는데, 옵저버블 중 하나라도 항목을 배출할 경우 마지막으로 배출된 항목들을 결합시켜서 배출하는 것.
@@ -969,6 +983,9 @@ resultSelector: { s1, s2 in s1 && s2 }
 - 두 개의 String을 받는데, 여기 데이터나, 저기 데이터나 전달이됨, 셀렉할 수 있는게 아니라 순서대로 그냥 전달해줌.
 - 밑으로 그냥 순서대로 내려 보내줌. 
 - (현재 예제와 맞지않아 사용안함)
+
+
+
 
 
 
