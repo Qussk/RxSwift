@@ -1,0 +1,32 @@
+# Uncomment the next line to define a global platform for your project
+platform :ios, '11.0'
+inhibit_all_warnings!
+
+def rx_swift
+    pod 'RxSwift', '~> 3.0'
+end
+
+def rx_cocoa
+    pod 'RxCocoa', '~> 3.0'
+end
+
+def test_pods
+    pod 'RxTest', '~> 3.0'
+    pod 'RxBlocking', '~> 3.0'
+    pod 'Nimble'
+end
+
+target 'MVVMRxSwiftTest' do
+
+    use_frameworks!
+    pod 'RxSwift'
+    pod 'RxCocoa'
+
+    target 'MVVMRxSwiftTestTests' do
+    inherit! :search_paths
+    pod 'RxTest'
+    pod 'RxNimble/RxTest'
+    end
+
+end
+
