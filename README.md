@@ -33,6 +33,14 @@ RxSwift 란?
 
 
 **💁🏻‍♀️학습 활동**
+
+## 계수기 Test
+
+- [[보러가기]](https://github.com/Qussk/RxSwift/tree/main/MVVMRxSwiftTest)
+- [참고 깃허브: https://github.com/PangMo5/MVVMRxSwiftTest](https://github.com/PangMo5/MVVMRxSwiftTest)
+- 참고 블로그 : [강남언니 기술블로그](https://blog.gangnamunni.com/post/HealingPaperTV-ViewModel-Test)
+
+
 ## RxSwift 4시간에 끝내기
   - [머리말](#RxSwiftIn4Hours)
   - [왜쓰냐?](#일반적인비동기방식)
@@ -68,7 +76,6 @@ RxSwift 란?
      - [ReplaySubject](#ReplaySubject)
   - 추가내용
     - driver
-    
     
     
     
