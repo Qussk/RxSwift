@@ -34,7 +34,7 @@ RxSwift 란?
 
 **💁🏻‍♀️학습 활동**
 
-## 계수기 Test
+## 계수기 Test(with: TDD?)
 
 - [[보러가기]](https://github.com/Qussk/RxSwift/tree/main/MVVMRxSwiftTest)
 - [참고 깃허브: https://github.com/PangMo5/MVVMRxSwiftTest](https://github.com/PangMo5/MVVMRxSwiftTest)
@@ -42,6 +42,7 @@ RxSwift 란?
 
 
 ## RxSwift 4시간에 끝내기
+**시즌1**
   - [머리말](#RxSwiftIn4Hours)
   - [왜쓰냐?](#일반적인비동기방식)
   - [step1](#step1)
@@ -76,9 +77,19 @@ RxSwift 란?
      - [ReplaySubject](#ReplaySubject)
   - 추가내용
     - driver
-    
-    
-    
+**시즌2**
+시즌2의 핵심 RxSwift학습내용.
+```
+1. 비동기로 생기는 데이터를 Observable로 감싸서 리턴하는 방법
+2. Observable로 오는 데이터를 받아서 처리하는 방법
+```
+- step1
+ - [왜쓰냐?](#일반적인디스패치큐의경우)
+ - [예제코드 RxSwift로 변경](#예제RxSwift로변경)   
+ - [순환참조없이](#)
+ - [메모리누수가 일어나는지 디버깅해보자](#디버깅해보자)
+ 
+ 
 ### observable
 
 [공식사이트 보기](http://reactivex.io/documentation/ko/observable.html) => 한국어 지원됨 !
@@ -86,11 +97,10 @@ RxSwift 란?
 
 
 
-
+## **시즌1**
 ## RxSwiftIn4Hours
 ![](https://github.com/iamchiwon/RxSwift_In_4_Hours/raw/master/docs/rxswift_in_4_hours_logo.png)
 >  RxSwift 4시간에 끝내기 
-
 
 
 [강좌 머리말](https://github.com/iamchiwon/RxSwift_In_4_Hours/blob/master/README_s1.md)
@@ -104,7 +114,7 @@ RxSwift 란?
 <img src = "https://github.com/Qussk/RxSwift/blob/main/image/asyncg.gif?raw=true" width="300px">
 </div>
 
-> 왼쪽 : 동기 ,  오른쪽:  비동기
+> 왼쪽부터: 동기 , 비동기
 
 
 *Code*
@@ -1184,6 +1194,509 @@ Observable.combineLatest(idValiad, pwValiad, resultSelector: { $0 && $1 })
  
  ### driver
 
+
+## **시즌2**
+### 일반적인디스패치큐의경우
+
+일반적인 DispatchQueue의 방식
+<div>
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/sync3.gif?raw=true" width="300px">
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/async3.gif?raw=true" width="300px">
+</div>
+
+> 왼쪽부터: 동기 , 비동기
+
+
+*예제코드(동기)*
+```swift
+import RxSwift
+import SwiftyJSON
+import UIKit
+
+let MEMBER_LIST_URL = "https://my.api.mockaroo.com/members_with_avatar.json?key=44ce18f0"
+
+class ViewController: UIViewController {
+    @IBOutlet var timerLabel: UILabel!
+    @IBOutlet var editView: UITextView!
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            self?.timerLabel.text = "\(Date().timeIntervalSince1970)"
+        }
+    }
+
+    private func setVisibleWithAnimation(_ v: UIView?, _ s: Bool) {
+        guard let v = v else { return }
+        UIView.animate(withDuration: 0.3, animations: { [weak v] in
+            v?.isHidden = !s
+        }, completion: { [weak self] _ in
+            self?.view.layoutIfNeeded()
+        })
+    }
+
+    // MARK: SYNC
+
+    @IBOutlet var activityIndicator: UIActivityIndicatorView!
+
+    @IBAction func onLoad() {
+        editView.text = ""
+        setVisibleWithAnimation(activityIndicator, true)
+
+        let url = URL(string: MEMBER_LIST_URL)!
+        let data = try! Data(contentsOf: url)
+        let json = String(data: data, encoding: .utf8)
+        self.editView.text = json
+        
+        self.setVisibleWithAnimation(self.activityIndicator, false)
+    }
+}
+```
+**목표**
+```
+- Indicator 보이게하기
+- LOAD시 json불러오는동안 타이머 멈추지 않게
+```
+
+*예제코드(비동기로 변경)*
+```swift
+import RxSwift
+import SwiftyJSON
+import UIKit
+
+let MEMBER_LIST_URL = "https://my.api.mockaroo.com/members_with_avatar.json?key=44ce18f0"
+
+class ViewController: UIViewController {
+    @IBOutlet var timerLabel: UILabel!
+    @IBOutlet var editView: UITextView!
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            self?.timerLabel.text = "\(Date().timeIntervalSince1970)"
+        }
+    }
+
+    private func setVisibleWithAnimation(_ v: UIView?, _ s: Bool) {
+        guard let v = v else { return }
+        UIView.animate(withDuration: 0.3, animations: { [weak v] in
+            v?.isHidden = !s
+        }, completion: { [weak self] _ in
+            self?.view.layoutIfNeeded()
+        })
+    }
+
+    // MARK: ASYNC
+
+    @IBOutlet var activityIndicator: UIActivityIndicatorView!
+
+    @IBAction func onLoad() {
+        editView.text = ""
+      self.setVisibleWithAnimation(self.activityIndicator, true)
+
+      DispatchQueue.global().async {
+        let url = URL(string: MEMBER_LIST_URL)!
+        let data = try! Data(contentsOf: url)
+        let json = String(data: data, encoding: .utf8)
+        
+        //UI화면 작업은 main쓰레드로,
+        DispatchQueue.main.async {
+          self.editView.text = json
+          self.setVisibleWithAnimation(self.activityIndicator, false)
+        }
+      }
+
+    }
+}
+
+```
+
+**refactoring**
+- 함수 따로 만들어서 처리 1
+```swift
+func downloadJson(_ url: String) -> String?{
+  let url = URL(string: url)!
+  let data = try! Data(contentsOf: url)
+  let json = String(data: data, encoding: .utf8)
+  return json
+}
+
+  // MARK: ASYNC
+
+  @IBOutlet var activityIndicator: UIActivityIndicatorView!
+
+  @IBAction func onLoad() {
+      editView.text = ""
+    self.setVisibleWithAnimation(self.activityIndicator, true)
+
+    DispatchQueue.global().async {
+      let json = self.downloadJson(MEMBER_LIST_URL)
+      
+      //UI화면 작업은 main쓰레드로,
+      DispatchQueue.main.async {
+        self.editView.text = json
+        self.setVisibleWithAnimation(self.activityIndicator, false)
+      }
+    }
+
+  }
+}
+
+```
+- 비동기작업을 함수에 따로 작업하고 싶음2 
+```swift
+//비동기작업만 따로 작업
+func downloadJson(_ url: String) -> String?{
+  DispatchQueue.global().async {
+    let url = URL(string: url)!
+    let data = try! Data(contentsOf: url)
+    let json = String(data: data, encoding: .utf8)
+    return json
+  }
+}
+```
+DispatchQueue는 리턴할 수 없으므로 complation으로 클로저 이용하여 처리
+```swift
+//비동기작업만 따로 작업
+func downloadJson(_ url: String, _ complecation: @escaping (String?) -> Void) {
+  DispatchQueue.global().async {
+    let url = URL(string: url)!
+    let data = try! Data(contentsOf: url)
+    let json = String(data: data, encoding: .utf8)
+  
+    DispatchQueue.main.async {
+      complecation(json) //결과값 전달
+    }
+  }
+}
+/*
+tips
+_ complecation: ((String?) -> Void)?)인 경우<complecation이 옵셔널인 경우> @escaping생략가능
+*/
+
+// MARK: ASYNC
+@IBOutlet var activityIndicator: UIActivityIndicatorView!
+
+@IBAction func onLoad() {
+  editView.text = ""
+  setVisibleWithAnimation(self.activityIndicator, true)
+  
+  downloadJson(MEMBER_LIST_URL) { json in
+    self.editView.text = json
+    self.setVisibleWithAnimation(self.activityIndicator, false)
+  }
+ }
+}
+
+```
+- 4번 호출? 33(만약 비동기 해야할 작업이 많다면..)
+<div>
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/async4.gif?raw=true" width="300px">
+</div>
+
+```swift
+// MARK: ASYNC
+@IBOutlet var activityIndicator: UIActivityIndicatorView!
+
+@IBAction func onLoad() {
+  editView.text = ""
+  setVisibleWithAnimation(self.activityIndicator, true)
+  
+  downloadJson(MEMBER_LIST_URL) { json in
+    self.editView.text = json
+    self.setVisibleWithAnimation(self.activityIndicator, false)
+    
+    self.downloadJson(MEMBER_LIST_URL) { json in
+      self.editView.text = json
+      self.setVisibleWithAnimation(self.activityIndicator, false)
+      
+      self.downloadJson(MEMBER_LIST_URL) { json in
+        self.editView.text = json
+        self.setVisibleWithAnimation(self.activityIndicator, false)
+        
+        self.downloadJson(MEMBER_LIST_URL) { json in
+          self.editView.text = json
+          self.setVisibleWithAnimation(self.activityIndicator, false)
+        }
+      }
+    }
+  }
+}
+}
+```
+**디스패치 문제점**
+- 4번의 호출경우, 중간에 에러시 작업등의 코드삽입시 코드 복잡해짐. 
+- 비동기 작업하는 함수에서 escaping처리안하고, 그냥 return하면 안돼?? 그럼 훨씬 간결해질텐데..... =>에서 출발(유틸리티등장). 리턴만 하게 되면 메인쓰레드 코드가 아래처럼 간결해짐. 
+```swift
+let json = downloadJson(MEMBER_LIST_URL)
+editView.text = json
+setVisibleWithAnimation(activityIndicator, false)
+```
+
+**그래서 등장한 것(나중에 생기는 데이터로 감싸기)**
+- completion: @escaping 쓰기않고 리턴하기. 
+```
+import RxSwift
+import SwiftyJSON
+import UIKit
+
+let MEMBER_LIST_URL = "https://my.api.mockaroo.com/members_with_avatar.json?key=44ce18f0"
+
+class 나중에생기는데이터<T> {
+private let task: (@escaping (T)-> Void) -> Void
+
+init(task: @escaping (@escaping (T) -> Void) -> Void) {
+self.task = task
+ }
+ 
+func 나중에오면(_ f: @escaping (T) -> Void) {
+task(f)
+ }
+}
+
+class ViewController: UIViewController {
+  @IBOutlet var timerLabel: UILabel!
+  @IBOutlet var editView: UITextView!
+  
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+      self?.timerLabel.text = "\(Date().timeIntervalSince1970)"
+    }
+  }
+  
+  private func setVisibleWithAnimation(_ v: UIView?, _ s: Bool) {
+    guard let v = v else { return }
+    UIView.animate(withDuration: 0.3, animations: { [weak v] in
+      v?.isHidden = !s
+    }, completion: { [weak self] _ in
+      self?.view.layoutIfNeeded()
+    })
+  }
+  
+  //비동기작업만 따로 작업
+  func downloadJson(_ url: String) -> 나중에생기는데이터<String?> {
+  return 나중에생기는데이터(){ f in //리턴등장
+  DispatchQueue.global().async {
+    let url = URL(string: url)!
+    let data = try! Data(contentsOf: url)
+    let json = String(data: data, encoding: .utf8)
+
+    DispatchQueue.main.async {
+      f(json) //결과값 전달
+    }
+  }
+   
+    }
+  }
+
+  // MARK: ASYNC
+  @IBOutlet var activityIndicator: UIActivityIndicatorView!
+
+  @IBAction func onLoad() {
+    editView.text = ""
+    setVisibleWithAnimation(self.activityIndicator, true)
+    
+    let json: 나중에생기는데이터<String?> = downloadJson(MEMBER_LIST_URL)
+    
+    json.나중에오면 { json in
+      self.editView.text = json
+      self.setVisibleWithAnimation(self.activityIndicator, false)
+    }
+   }
+  }
+```
+- 이런식으로 표현 가능
+- 이러한 유틸리티등장1: PromiseKit (아래코드 참고), Bolt, RxSwift
+```
+// MARK: ASYNC
+@IBOutlet var activityIndicator: UIActivityIndicatorView!
+@IBAction func onLoad() {
+  editView.text = ""
+  setVisibleWithAnimation(self.activityIndicator, true)
+  
+  downloadJson(MEMBER_LIST_URL)
+  .then { json in
+    self.editView.text = json
+    self.setVisibleWithAnimation(self.activityIndicator, false)
+  }
+ }
+}
+```
+### 예제RxSwift로변경
+
+위의 나중에 생기는데이터 ==> 옵져버블
+위의 나중에오면 ==> 서브스크라이브
+```
+import RxSwift
+import SwiftyJSON
+import UIKit
+
+let MEMBER_LIST_URL = "https://my.api.mockaroo.com/members_with_avatar.json?key=44ce18f0"
+
+class Observable<T> {
+private let task: (@escaping (T)-> Void) -> Void
+
+init(task: @escaping (@escaping (T) -> Void) -> Void) {
+self.task = task
+ }
+ 
+func subscribe(_ f: @escaping (T) -> Void) {
+task(f)
+ }
+}
+...(중략)
+
+//비동기작업만 따로 작업
+func downloadJson(_ url: String) -> Observable<String?> {
+return Observable.create { f in //create를 통해 생성(리턴의 기능)
+DispatchQueue.global().async {
+  let url = URL(string: url)!
+  let data = try! Data(contentsOf: url)
+  let json = String(data: data, encoding: .utf8)
+
+  DispatchQueue.main.async {
+    f.onNext(json) //결과값 전달
+  }
+}
+ return Disposables.create()
+  }
+}
+
+// MARK: ASYNC
+@IBOutlet var activityIndicator: UIActivityIndicatorView!
+@IBAction func onLoad() {
+  editView.text = ""
+  setVisibleWithAnimation(self.activityIndicator, true)
+  
+  downloadJson(MEMBER_LIST_URL)
+  .subscribe { event in
+    switch event {
+    case.next(let json):
+    self.editView.text = json
+    self.setVisibleWithAnimation(self.activityIndicator, false)
+    
+    case .completed:
+     break
+    case .error:
+     break
+     }
+  }
+ }
+}
+```
+- RxSwift는 complation으로 전달하는게 아니라, 리턴값으로 전달하기 위해 등장. 
+- 옵져버블 형태로 감싸서 리턴하면, 이는 나중에 생기는 데이터(Observable)다.
+- 나중에 생기는 데이터를 사용할때는 나중에 오면(subscribe)를 호출하면된다.
+- 거기(subscribe)엔 이벤트(event)가 오는데 종류는 3가지다. .next, .completed, error. (몇개 더 있긴함)
+- 그리고, 데이터가 전달될 때는 Next로 온다.
+
+### 순환참조?
+
+위 코드는 순환참조 생기는 문제가 있음
+(클로저가 self를 캡처하면서 레퍼런스카운트가 증가하면 순환참조가 생김. )
+**1. 순환참조적용**
+```swift
+// MARK: ASYNC
+@IBOutlet var activityIndicator: UIActivityIndicatorView!
+@IBAction func onLoad() {
+  editView.text = ""
+  setVisibleWithAnimation(self.activityIndicator, true)
+  
+  downloadJson(MEMBER_LIST_URL)
+    .subscribe { [weak self] event in
+      switch event {
+      case.next(let json):
+        self?.editView.text = json
+        self?.setVisibleWithAnimation(self?.activityIndicator, false)
+        
+      case .completed:
+        break
+      case .error:
+        break
+      }
+    }
+}
+}
+
+```
+
+**2. (다른 방법)레퍼런스 카운트를 감소시켜주면된다.**
+
+- 클로저가 없어지면 레퍼런스카운트도 없어짐. 
+- 언제없어지냐 ? **.completed, .error**에서
+- completed시키면 역할이 다했다는 의미로 레퍼런스카운트가 없어짐.
+- 클로저 범위까지만 수행하고 클로저 사라짐. ==> 클로저 자체가 사라지니까 RC도 자연스럽게 감소(없어지는)하는 것;;
+
+```swift
+//비동기작업만 따로 작업
+func downloadJson(_ url: String) -> Observable<String?> {
+  return Observable.create { f in //create를 통해 생성(리턴의 기능)
+    DispatchQueue.global().async {
+      let url = URL(string: url)!
+      let data = try! Data(contentsOf: url)
+      let json = String(data: data, encoding: .utf8)
+      
+      DispatchQueue.main.async {
+        f.onNext(json) //결과값 전달
+        f.onCompleted() //결과 끝났어(RC 낮추기) <--이것만 추가하면 됨;;
+      }
+    }
+    return Disposables.create()
+  }
+}
+
+// MARK: ASYNC
+@IBOutlet var activityIndicator: UIActivityIndicatorView!
+@IBAction func onLoad() {
+  editView.text = ""
+  setVisibleWithAnimation(self.activityIndicator, true)
+  
+  downloadJson(MEMBER_LIST_URL)
+    .subscribe { event in
+      switch event {
+      case.next(let json):
+        self.editView.text = json
+        self.setVisibleWithAnimation(self.activityIndicator, false)
+        
+      case .completed:
+        break
+      case .error:
+        break
+      }
+    }
+}
+}
+
+```
+
+### 디버깅해보자
+
+위의 `f.onCompleted()` 를 추가하고 정말 메모리누수가 일어나지 않았는지 확인...! 디버깅해보자. 
+
+<div>
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/t1.png?raw=true" width="500px">
+
+워크스페이스 빌더 >  Edit scheme...
+
+들어가면 위의 창이 나옴. 해당 체크하고 close.... 빌드환경?내용??을 바꾼것!
+
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/t2.png?raw=true" width="500px">
+콘솔 누름
+
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/t3.png?raw=true" width="500px">
+좌측 하단 느낌표 누름
+
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/t4.png?raw=true" width="500px">
+위와 같은 그림이면 메모리 누수 일어나지 않음!! 
+
+
+
+```
+RxSwift학습내용
+1. 비동기로 생기는 데이터를 Observable로 감싸서 리턴하는 방법
+2. Observable로 오는 데이터를 받아서 처리하는 방법
+```
 
 
 ### 메모리누수
