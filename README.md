@@ -77,16 +77,12 @@ RxSwift 란?
      - [ReplaySubject](#ReplaySubject)
   - 추가내용
     - driver
+    
 **시즌2**
-시즌2의 핵심 RxSwift학습내용.
-```
-1. 비동기로 생기는 데이터를 Observable로 감싸서 리턴하는 방법
-2. Observable로 오는 데이터를 받아서 처리하는 방법
-```
 - step1
  - [왜쓰냐?](#일반적인디스패치큐의경우)
  - [예제코드 RxSwift로 변경](#예제RxSwift로변경)   
- - [순환참조없이](#)
+ - [순환참조없이](#순환참조없이)
  - [메모리누수가 일어나는지 디버깅해보자](#디버깅해보자)
  
  
@@ -1591,7 +1587,7 @@ DispatchQueue.global().async {
 - 거기(subscribe)엔 이벤트(event)가 오는데 종류는 3가지다. .next, .completed, error. (몇개 더 있긴함)
 - 그리고, 데이터가 전달될 때는 Next로 온다.
 
-### 순환참조?
+### 순환참조없이
 
 위 코드는 순환참조 생기는 문제가 있음
 (클로저가 self를 캡처하면서 레퍼런스카운트가 증가하면 순환참조가 생김. )
@@ -1675,19 +1671,19 @@ func downloadJson(_ url: String) -> Observable<String?> {
 위의 `f.onCompleted()` 를 추가하고 정말 메모리누수가 일어나지 않았는지 확인...! 디버깅해보자. 
 
 <div>
-<img src = "https://github.com/Qussk/RxSwift/blob/main/image/t1.png?raw=true" width="500px">
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/t1.png?raw=true" width="800px">
 
 워크스페이스 빌더 >  Edit scheme...
 
 들어가면 위의 창이 나옴. 해당 체크하고 close.... 빌드환경?내용??을 바꾼것!
 
-<img src = "https://github.com/Qussk/RxSwift/blob/main/image/t2.png?raw=true" width="500px">
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/t2.png?raw=true" width="800px">
 콘솔 누름
 
-<img src = "https://github.com/Qussk/RxSwift/blob/main/image/t3.png?raw=true" width="500px">
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/t3.png?raw=true" width="800px">
 좌측 하단 느낌표 누름
 
-<img src = "https://github.com/Qussk/RxSwift/blob/main/image/t4.png?raw=true" width="500px">
+<img src = "https://github.com/Qussk/RxSwift/blob/main/image/t4.png?raw=true" width="800px">
 위와 같은 그림이면 메모리 누수 일어나지 않음!! 
 
 
