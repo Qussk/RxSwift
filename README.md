@@ -86,6 +86,12 @@ RxSwift 란?
  - [메모리누수가 일어나는지 디버깅해보자](#디버깅해보자)
  
  
+ 
+ 시즌2의 RxSwift학습내용
+ > 비동기로 생기는 데이터를 Observable로 감싸서 리턴하는 방법
+ >>  Observable로 오는 데이터를 받아서 처리하는 방법
+ 
+ 
 ### observable
 
 [공식사이트 보기](http://reactivex.io/documentation/ko/observable.html) => 한국어 지원됨 !
@@ -1431,7 +1437,7 @@ setVisibleWithAnimation(activityIndicator, false)
 
 **그래서 등장한 것(나중에 생기는 데이터로 감싸기)**
 - completion: @escaping 쓰기않고 리턴하기. 
-```
+```swift
 import RxSwift
 import SwiftyJSON
 import UIKit
@@ -1504,7 +1510,7 @@ class ViewController: UIViewController {
 ```
 - 이런식으로 표현 가능
 - 이러한 유틸리티등장1: PromiseKit (아래코드 참고), Bolt, RxSwift
-```
+```swift
 // MARK: ASYNC
 @IBOutlet var activityIndicator: UIActivityIndicatorView!
 @IBAction func onLoad() {
@@ -1523,7 +1529,7 @@ class ViewController: UIViewController {
 
 위의 나중에 생기는데이터 ==> 옵져버블
 위의 나중에오면 ==> 서브스크라이브
-```
+```swift
 import RxSwift
 import SwiftyJSON
 import UIKit
@@ -1689,7 +1695,7 @@ func downloadJson(_ url: String) -> Observable<String?> {
 
 
 ```
-RxSwift학습내용
+시즌2의 RxSwift학습내용
 1. 비동기로 생기는 데이터를 Observable로 감싸서 리턴하는 방법
 2. Observable로 오는 데이터를 받아서 처리하는 방법
 ```
